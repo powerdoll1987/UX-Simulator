@@ -15,7 +15,7 @@ Created on Fri Mar 24 11:16:19 2017
 Portfolio的df结构
 Ticker(index) | Position /  Cost / Open / Close / Low / High / Category / MktVal
 Trade的df结构
-number(index) | Ticker / Size / Price / RealizedPnL
+number(index) | Ticker / Size / Price / RealizedPnL / customField
 Spec的df结构
 Ticker(index) | Multiplier / Category
 ******************************************************************************************
@@ -100,18 +100,24 @@ def calPortfolioMarketValue(portfolio, m_spec):
         i += 1
     return 0
 
-#*******customized structure********
-# 根据交易规则生成交易
-def applyTradeRule(date, prevPortfolio, m_px, m_spec):
-    tdTrade = applyTradeRuleUXA(date, prevPortfolio, m_px, m_spec)
-    return tdTrade
+# 生产trade的dataframe
+def createTrade(idx, tic, size, px, realizedPnL, customField):
+    cols = ['Ticker' , 'Size', 'Price', 'RealizedPnL', 'customField']    
+    data = {'Ticker': tic, 'Size': size, 'Price':px, 'RealizedPnL':realizedPnL, 'customField':customField}
+    return pd.DataFrame(data, index = [idx], columns = cols)
 
-# 根据交易规则生成交易, UXA的交易规则
-def applyTradeRuleUXA(date, prevPortfolio, m_px, m_spec):
+# 应用自定义的交易规则
+def applyTradeRule(date, prevPortfolio, m_px, m_spec):
+    idx = 0 # 每增加一笔trade，index + 1
+    tdTrades = pd.DataFrame()
+    idx, tdTrades = applyTradeRuleUXA(idx, tdTrades, date, prevPortfolio, m_px, m_spec)
+    return tdTrades
+
+#*******customized structure********
+#  UXA的基础交易规则
+# 只有在expire day发生交易, 买入3个月之后的UX，平掉到期的UX
+def applyTradeRuleUXA(idx, tdTrades, date, prevPortfolio, m_px, m_spec):
     global uxExpDateLst
-    cols = ['Ticker' , 'Size', 'Price', 'RealizedPnL']
-    tdTrade = pd.DataFrame(columns = cols)
-    i = 0
     # 只有在expire day发生交易, 买入3个月之后的UX，平掉到期的UX
     if date in uxExpDateLst:
         m = date.month
@@ -120,24 +126,23 @@ def applyTradeRuleUXA(date, prevPortfolio, m_px, m_spec):
         y2 = (date + DateOffset(months = 3)).year
         expireContract = 'UX' + tf.month2ticker(m) + str(y)
         newContract = 'UX' + tf.month2ticker(m2) + str(y2)
+        # 平掉到期的合约
         if expireContract in prevPortfolio.index:
             px = findUXPx(date, m_px, expireContract, 'Close')
-            data = {'Ticker': expireContract, 'Size': 10, 'Price':px, 'RealizedPnL':0}
-            expireTd = pd.DataFrame(data, index = [i], columns = cols)
-            i += 1
-            tdTrade = pd.concat([tdTrade, expireTd])
-            
+            expireTd = createTrade(idx, expireContract, 10, px, 0, 'Close')
+            idx += 1
+            tdTrades = pd.concat([tdTrades, expireTd])
+        # 买入3个月后的合约
         px = findUXPx(date, m_px, newContract, 'Close')
-        data = {'Ticker': newContract, 'Size': -10, 'Price':px, 'RealizedPnL':0}
-        newTd = pd.DataFrame(data, index = [i], columns = cols)
-        i += 1
-        tdTrade = pd.concat([tdTrade, newTd])
+        newTd = createTrade(idx, newContract, -10, px, 0, 'Open')
+        idx += 1
+        tdTrades = pd.concat([tdTrades, newTd])
         
-    return tdTrade
+    return idx, tdTrades
 #*******customized structure********
     
-#*******customized structure********
-# 找UX合约的价格, 合约格式为UXF2017
+
+# 找UX合约的价格, 合约格式为UXF2017，价格数据是UX3,UX2...
 def findUXPx(date, m_px, uxCtr, OCLH):
     global uxExpDateLst
     expireMonth = str(tf.ticker2month(uxCtr[2]))
@@ -148,7 +153,6 @@ def findUXPx(date, m_px, uxCtr, OCLH):
     numOfCtr = len(uxExpDateLst[(uxExpDateLst <= expireDay) & (uxExpDateLst >= date)]) #判断是UX是第几个合约
     pxTicker = 'UX' + str(numOfCtr) + ' Index'
     return m_px[OCLH].ix[date, pxTicker]
-#*******customized structure********
     
 # 找品种那天的价格
 def findPx(date, m_px, tic, OCLH):

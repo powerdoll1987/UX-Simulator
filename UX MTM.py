@@ -240,7 +240,7 @@ def applyTradeRuleUXA6(idx, tdTrades, date, prevPortfolio):
 def applyTradeRule(date, prevPortfolio):
     idx = 0 # 每增加一笔trade，index + 1
     tdTrades = pd.DataFrame()
-    idx, tdTrades = applyTradeRuleUXA6(idx, tdTrades, date, prevPortfolio)
+    idx, tdTrades = applyTradeRuleUXA(idx, tdTrades, date, prevPortfolio)
     return tdTrades
 
 # 平掉所有头寸
@@ -258,13 +258,12 @@ def closeAllPos(idx, tdTrades, date, prevPortfolio):
     
 # 找UX合约的价格, 合约格式为UXF2017，价格数据是UX3,UX2...
 def findUXPx(date, uxCtr, OCLH):
-    global uxExpDateLst
     expireMonth = str(tf.ticker2month(uxCtr[2]))
     expireYear = uxCtr[3:]
     d1 = pd.Timestamp(expireYear + '-' + expireMonth + '-' + '1')
     d2 = d1 + MonthEnd(1)
-    expireDay = uxExpDateLst[(uxExpDateLst <= d2) & (uxExpDateLst >= d1)][0]
-    numOfCtr = len(uxExpDateLst[(uxExpDateLst <= expireDay) & (uxExpDateLst >= date)]) #判断是UX是第几个合约
+    expireDay = cf.m_uxExpDateLst[(cf.m_uxExpDateLst <= d2) & (cf.m_uxExpDateLst >= d1)][0]
+    numOfCtr = len(cf.m_uxExpDateLst[(cf.m_uxExpDateLst <= expireDay) & (cf.m_uxExpDateLst >= date)]) #判断是UX是第几个合约
     pxTicker = 'UX' + str(numOfCtr) + ' Index'
     return cf.m_px[OCLH].ix[date, pxTicker]
 

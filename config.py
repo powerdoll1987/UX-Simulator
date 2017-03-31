@@ -7,7 +7,7 @@ configuration file
 
 import pandas as pd
 import numpy as np
-import sys
+from pandas.tseries.offsets import Day, BDay, DateOffset, MonthEnd
 
 # 常数数据结构，需要读入或者设定，但是在程序运行过程中不再改变
 m_cash = 0
@@ -44,7 +44,7 @@ def initialize():
     m_spec.set_index('Ticker', inplace = True)
     
     # m_dateRng 设定交易模拟的时间段
-    m_dateRng = pd.date_range('1/1/2012', '3/20/2017', freq = 'B') 
+    m_dateRng = pd.date_range('6/1/2004', '3/20/2008', freq = 'B') 
         
     # m_blockPeriod 读入禁止交易的时间段
     bp = pd.read_excel('blockPeriod.xls', sheetname = 'Sheet1')
